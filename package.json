@@ -1,0 +1,17 @@
+{
+  "name": "vanilla-ffmpeg-converter",
+  "version": "1.0.0",
+  "scripts": {
+    "setup": "node copy-libs.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@ffmpeg/core": "^0.12.6",
+    "@ffmpeg/ffmpeg": "^0.12.10",
+    "@ffmpeg/util": "^0.12.1",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "fs-extra": "^11.2.0"
+  }
+}

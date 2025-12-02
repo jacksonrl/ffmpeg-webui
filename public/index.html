@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanilla JS FFmpeg Converter MVP</title>
+    <!-- Load COI Service Worker First to handle Headers -->
+    <script src="coi-serviceworker.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; background: #f0f2f5; color: #333; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { margin-top: 0; color: #0066cc; }
+        .control-group { margin-bottom: 1.5rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        select, input[type="file"] { width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; }
+        button { background: #0066cc; color: white; border: none; padding: 0.75rem 1.5rem; font-size: 1rem; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #0052a3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #logs { background: #1e1e1e; color: #00ff00; padding: 1rem; border-radius: 4px; height: 200px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; margin-top: 2rem; }
+        #download-link { display: none; margin-top: 1rem; padding: 1rem; background: #e6fffa; border: 1px solid #b2f5ea; color: #234e52; border-radius: 4px; text-decoration: none; text-align: center; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Wasm Converter MVP</h1>
+    
+    <div class="control-group">
+        <label for="uploader">1. Select File</label>
+        <input type="file" id="uploader">
+    </div>
+
+    <div class="control-group">
+        <label for="format">2. Select Output Format</label>
+        <select id="format">
+            <option value="mp4">MP4 (Video)</option>
+            <option value="mp3">MP3 (Audio)</option>
+            <option value="gif">GIF (Animation)</option>
+            <option value="avi">AVI</option>
+        </select>
+    </div>
+
+    <button id="convert-btn" disabled>Load FFmpeg First...</button>
+
+    <a id="download-link" href="#" target="_blank">Download Result</a>
+
+    <div id="logs">Initializing...</div>
+</div>
+
+<script type="module">
+    // Import from local public/lib folder (populated by npm run setup)
+    import { FFmpeg } from './lib/ffmpeg/index.js';
+    import { fetchFile, toBlobURL } from './lib/util/index.js';
+
+    const elm = {
+        uploader: document.getElementById('uploader'),
+        format: document.getElementById('format'),
+        btn: document.getElementById('convert-btn'),
+        logs: document.getElementById('logs'),
+        download: document.getElementById('download-link')
+    };
+
+    let ffmpeg = null;
+
+    const log = (message) => {
+        elm.logs.innerHTML += `${message}\n`;
+        elm.logs.scrollTop = elm.logs.scrollHeight;
+    };
+
+    const loadFFmpeg = async () => {
+        try {
+            ffmpeg = new FFmpeg();
+            
+            // Hook into internal logs
+            ffmpeg.on('log', ({ message }) => {
+                log(`[FFmpeg] ${message}`);
+            });
+
+            // Specific path configuration for static file serving
+            const baseURL = './lib/core';
+            
+            log("Loading FFmpeg core...");
+            await ffmpeg.load({
+                coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                // Worker path if needed (usually handled automatically by coreURL logic in 0.12, 
+                // but good to be explicit if issues arise)
+            });
+
+            log("FFmpeg loaded successfully!");
+            elm.btn.innerText = "Convert";
+            elm.btn.disabled = false;
+        } catch (error) {
+            log(`Error loading FFmpeg: ${error.message}`);
+            console.error(error);
+        }
+    };
+
+    const transcode = async () => {
+        const file = elm.uploader.files[0];
+        if (!file) {
+            alert("Please select a file first.");
+            return;
+        }
+
+        const outputFormat = elm.format.value;
+        const inputName = `input.${file.name.split('.').pop()}`;
+        const outputName = `output.${outputFormat}`;
+
+        elm.btn.disabled = true;
+        elm.btn.innerText = "Processing...";
+        elm.download.style.display = 'none';
+
+        try {
+            // 1. Write file to memory
+            log(`Writing file ${inputName} to memory...`);
+            await ffmpeg.writeFile(inputName, await fetchFile(file));
+
+            // 2. Run Command
+            // -i input -c copy (if possible) or re-encode
+            // Note: Simplest conversion command. 
+            // For production you might want specific codecs (e.g. -c:v libx264 for mp4)
+            log(`Starting conversion to ${outputFormat}...`);
+            await ffmpeg.exec(['-i', inputName, outputName]);
+
+            // 3. Read file from memory
+            log("Reading output file...");
+            const data = await ffmpeg.readFile(outputName);
+
+            // 4. Create Download Link
+            const blob = new Blob([data.buffer], { type: `${outputFormat === 'mp4' ? 'video' : 'audio'}/${outputFormat}` });
+            const url = URL.createObjectURL(blob);
+
+            elm.download.href = url;
+            elm.download.download = outputName;
+            elm.download.style.display = 'block';
+            elm.download.innerText = `Download ${outputName}`;
+            
+            log("Done!");
+        } catch (error) {
+            log(`Conversion Error: ${error.message}`);
+            console.error(error);
+        } finally {
+            elm.btn.disabled = false;
+            elm.btn.innerText = "Convert";
+            
+            // Cleanup memory to prevent crashes on repeated use
+            try {
+                await ffmpeg.deleteFile(inputName);
+                await ffmpeg.deleteFile(outputName);
+            } catch (e) {}
+        }
+    };
+
+    // Initialize
+    elm.btn.addEventListener('click', transcode);
+    loadFFmpeg();
+
+</script>
+</body>
+</html>
