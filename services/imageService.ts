@@ -9,14 +9,19 @@ import * as jxlDec from '@jsquash/jxl/decode.js';
 
 export type ImageFormat = 'jpeg' | 'png' | 'webp' | 'avif' | 'jxl';
 
+// Paths are relative to the public directory
 const WASM_PATHS = {
-    jpeg: '/lib/image/mozjpeg_enc.wasm',
-    png: '/lib/image/squoosh_png_bg.wasm',
-    webp: '/lib/image/webp_enc_simd.wasm',
-    avif: '/lib/image/avif_enc_mt.wasm',
-    jxl: '/lib/image/jxl_enc_mt.wasm',
-    jxl_dec: '/lib/image/jxl_dec.wasm'
+    jpeg: 'lib/image/mozjpeg_enc.wasm',
+    png: 'lib/image/squoosh_png_bg.wasm',
+    webp: 'lib/image/webp_enc_simd.wasm',
+    avif: 'lib/image/avif_enc_mt.wasm',
+    jxl: 'lib/image/jxl_enc_mt.wasm',
+    jxl_dec: 'lib/image/jxl_dec.wasm'
 };
+
+// Helper function to resolve the path correctly using string concatenation
+const resolveUrl = (path: string) => `${import.meta.env.BASE_URL}${path}`;
+
 
 function getModule(mod: any) {
     return {
@@ -30,8 +35,10 @@ const initialized = {
     jpeg: false, png: false, webp: false, avif: false, jxl: false, jxl_dec: false
 };
 
-async function initCodec(format: string, initFn: any, wasmUrl: string) {
+async function initCodec(format: string, initFn: any, wasmPath: string) {
     if (initialized[format]) return;
+
+    const wasmUrl = resolveUrl(wasmPath);
 
     if (format === 'png') {
         // PNG (Rust/wasm-bindgen): Expects the URL string directly.

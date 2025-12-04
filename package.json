@@ -8,7 +8,8 @@
     "serve": "node server.js",
     "dev": "npm run setup && vite",
     "preview": "npm run setup && concurrently \"npm run watch\" \"npm run serve\"",
-    "build": "npm run setup && vite build"
+    "build": "npm run setup && vite build",
+    "preview:gh": "npm run build && vite preview"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.6",

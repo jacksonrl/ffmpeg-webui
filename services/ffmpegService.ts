@@ -10,16 +10,15 @@ export const getFFmpeg = async (): Promise<FFmpeg> => {
 
   ffmpeg = new FFmpeg();
 
-  const baseURL = '/lib/core';
+  const base = import.meta.env.BASE_URL;
 
   try {
-    console.log(`Loading FFmpeg MT from ${baseURL}...`);
+    console.log(`Loading FFmpeg MT from base: ${base}`);
     
     await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-      // ADD: Load the worker for Multi-threading support
-      workerURL: await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, 'text/javascript'),
+      coreURL: await toBlobURL(`${base}lib/core/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${base}lib/core/ffmpeg-core.wasm`, 'application/wasm'),
+      workerURL: await toBlobURL(`${base}lib/core/ffmpeg-core.worker.js`, 'text/javascript'),
     });
     
     console.log("FFmpeg MT loaded successfully");
