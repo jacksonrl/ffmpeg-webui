@@ -1,4 +1,4 @@
-name: deploy web
+name: Deploy to GitHub Pages
 
 on:
   workflow_dispatch:
@@ -29,13 +29,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web app (Copy FFmpeg libs)
-        run: npm run setup
+      - name: Build application
+        run: npm run build
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v4
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./public
+          path: ./dist
 
       - name: Deploy to GitHub Pages
         id: deployment

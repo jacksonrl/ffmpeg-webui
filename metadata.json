@@ -1,0 +1,5 @@
+{
+  "name": "WasmMedia Studio",
+  "description": "A powerful, browser-based media manipulation suite powered by FFmpeg WebAssembly. Convert, trim, and process media files locally without uploading to a server.",
+  "requestFramePermissions": []
+}
